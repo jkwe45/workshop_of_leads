@@ -6,10 +6,10 @@
   "type": "module",
   "author": "jkwe45",
   "license": "MIT",
-  "homepage": "https://github.com/jkwe45/masterskaya-lidov",
+  "homepage": "https://github.com/jkwe45/workshop_of_leads",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jkwe45/masterskaya-lidov.git"
+    "url": "https://github.com/jkwe45/workshop_of_leads.git"
   },
   "scripts": {
     "quartz": "./quartz/bootstrap-cli.mjs",

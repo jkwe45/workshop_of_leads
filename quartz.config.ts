@@ -1,9 +1,9 @@
 import { QuartzConfig } from "./quartz/cfg"
 import * as Plugin from "./quartz/plugins"
 
-const fallbackBaseUrl = "jkwe45.github.io/masterskaya-lidov"
+const fallbackBaseUrl = "jkwe45.github.io/workshop_of_leads"
 const baseUrl = process.env.GITHUB_PAGES
-  ? "jkwe45.github.io/masterskaya-lidov"
+  ? "jkwe45.github.io/workshop_of_leads"
   : fallbackBaseUrl
 
 /**
