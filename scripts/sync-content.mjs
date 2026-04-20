@@ -55,6 +55,10 @@ function normalizeName(name) {
   return name.replace(/^\d+\s+/, "")
 }
 
+function stripMarkdownExtension(name) {
+  return name.replace(/\.md$/i, "")
+}
+
 function mapRelativePath(relativePath) {
   const parts = relativePath.split(path.sep)
   const fileName = parts.at(-1)
@@ -79,6 +83,64 @@ function mapRelativePath(relativePath) {
   return path.join(...mapped)
 }
 
+async function collectMarkdownFiles(relativeDir = "", files = []) {
+  const directoryPath = path.join(rootDir, relativeDir)
+  const entries = await readdir(directoryPath, { withFileTypes: true })
+
+  for (const entry of entries) {
+    const relativePath = relativeDir ? path.join(relativeDir, entry.name) : entry.name
+
+    if (!relativeDir && excludedRootFiles.has(entry.name)) {
+      continue
+    }
+
+    if (entry.isDirectory()) {
+      if (excludedDirs.has(entry.name)) {
+        continue
+      }
+
+      await collectMarkdownFiles(relativePath, files)
+      continue
+    }
+
+    if (path.extname(entry.name).toLowerCase() === ".md") {
+      files.push(relativePath)
+    }
+  }
+
+  return files
+}
+
+const markdownFiles = await collectMarkdownFiles()
+const wikilinkMap = new Map()
+
+for (const relativePath of markdownFiles) {
+  const sourceNoExt = stripMarkdownExtension(relativePath)
+  const mappedNoExt = stripMarkdownExtension(mapRelativePath(relativePath))
+  const sourceBase = stripMarkdownExtension(path.basename(relativePath))
+  const mappedBase = stripMarkdownExtension(path.basename(mappedNoExt))
+
+  wikilinkMap.set(sourceNoExt.replaceAll("\\", "/"), mappedNoExt.replaceAll("\\", "/"))
+  wikilinkMap.set(sourceBase, mappedBase)
+}
+
+function rewriteWikilinks(markdown) {
+  return markdown.replace(/\[\[([^[\]]+)\]\]/g, (fullMatch, inner) => {
+    const [targetWithAnchor, explicitLabel] = inner.split("|")
+    const [rawTarget, anchor] = targetWithAnchor.split("#")
+    const normalizedTarget = rawTarget.trim().replaceAll("\\", "/")
+    const mappedTarget = wikilinkMap.get(normalizedTarget)
+
+    if (!mappedTarget || mappedTarget === normalizedTarget) {
+      return fullMatch
+    }
+
+    const rebuiltTarget = anchor ? `${mappedTarget}#${anchor}` : mappedTarget
+    const label = explicitLabel ?? rawTarget.trim()
+    return `[[${rebuiltTarget}|${label}]]`
+  })
+}
+
 async function copyEntry(relativePath) {
   const sourcePath = path.join(rootDir, relativePath)
   const destinationPath = path.join(contentDir, mapRelativePath(relativePath))
@@ -92,7 +154,8 @@ async function copyEntry(relativePath) {
 
   if (ext === ".md") {
     const source = await readFile(sourcePath, "utf8")
-    await writeFile(destinationPath, source, "utf8")
+    const rewritten = rewriteWikilinks(source)
+    await writeFile(destinationPath, rewritten, "utf8")
     return
   }
 
